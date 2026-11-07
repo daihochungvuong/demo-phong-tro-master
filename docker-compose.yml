@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    container_name: demo-phong-tro
+    ports:
+      - "3000:3000"
+    environment:
+      - MONGODB_URI=mongodb://admintison:tisonpaint@mongo-primary:27017,mongo-secondary-1:27017,mongo-secondary-2:27017/QuanLyPhongTro?replicaSet=rs0&authSource=admin
+      - NEXTAUTH_URL=http://localhost:3000
+      - NEXTAUTH_SECRET=7y0ir8hYmiq1H1nqgqez1gLx/h0VUD74Flj0AZcS9ZE=
+      - NODE_ENV=production
+      - NEXT_PUBLIC_CLOUD_NAME=k157btof
+      - NEXT_PUBLIC_UPLOAD_PRESET=ml_default
+      - SMTP_HOST=smtp.gmail.com
+      - SMTP_PORT=587
+      - SMTP_USER=tuanphongkhoi@gmail.com
+      - SMTP_PASS=Luungocan@
+      - REDIS_URL=redis://redis-cache:6379
+    depends_on:
+      - redis-cache
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  redis-cache:
+    image: redis:7-alpine
+    container_name: redis-cache
+    ports:
+      - "6379:6379"
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
+    networks:
+      - app-network
+    restart: unless-stopped
+
+networks:
+  app-network:
+    driver: bridge

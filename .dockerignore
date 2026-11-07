@@ -1,0 +1,12 @@
+node_modules
+.next
+.git
+.gitignore
+.env.local
+.env*.local
+*.md
+!README.md
+mongodb-replicaset
+docker-compose.yml
+Dockerfile
+.dockerignore
