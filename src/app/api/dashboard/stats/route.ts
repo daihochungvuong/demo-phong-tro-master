@@ -7,6 +7,10 @@ import HoaDon from '@/models/HoaDon';
 import SuCo from '@/models/SuCo';
 import HopDong from '@/models/HopDong';
 import ThanhToan from '@/models/ThanhToan';
+import { cacheGet, cacheSet } from '@/lib/redis';
+
+const CACHE_KEY = 'dashboard:stats';
+const CACHE_TTL = 60;
 
 export async function GET(request: NextRequest) {
   try {
@@ -19,81 +23,53 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    const cached = await cacheGet<typeof stats>(CACHE_KEY);
+    if (cached) {
+      return NextResponse.json({ success: true, data: cached, source: 'cache' });
+    }
+
     await dbConnect();
 
     const currentDate = new Date();
     const currentMonth = currentDate.getMonth() + 1;
     const currentYear = currentDate.getFullYear();
 
-    // Get room stats
-    const totalPhong = await Phong.countDocuments();
-    const phongTrong = await Phong.countDocuments({ trangThai: 'trong' });
-    const phongDangThue = await Phong.countDocuments({ trangThai: 'dangThue' });
-    const phongBaoTri = await Phong.countDocuments({ trangThai: 'baoTri' });
+    const [totalPhong, phongTrong, phongDangThue, phongBaoTri] = await Promise.all([
+      Phong.countDocuments(),
+      Phong.countDocuments({ trangThai: 'trong' }),
+      Phong.countDocuments({ trangThai: 'dangThue' }),
+      Phong.countDocuments({ trangThai: 'baoTri' }),
+    ]);
 
-    // Get revenue stats
     const startOfMonth = new Date(currentYear, currentMonth - 1, 1);
     const endOfMonth = new Date(currentYear, currentMonth, 0, 23, 59, 59);
-    
-    const doanhThuThang = await ThanhToan.aggregate([
-      {
-        $match: {
-          ngayThanhToan: {
-            $gte: startOfMonth,
-            $lte: endOfMonth
-          }
-        }
-      },
-      {
-        $group: {
-          _id: null,
-          total: { $sum: '$soTien' }
-        }
-      }
-    ]);
-
     const startOfYear = new Date(currentYear, 0, 1);
     const endOfYear = new Date(currentYear, 11, 31, 23, 59, 59);
-    
-    const doanhThuNam = await ThanhToan.aggregate([
-      {
-        $match: {
-          ngayThanhToan: {
-            $gte: startOfYear,
-            $lte: endOfYear
-          }
-        }
-      },
-      {
-        $group: {
-          _id: null,
-          total: { $sum: '$soTien' }
-        }
-      }
+
+    const [doanhThuThang, doanhThuNam, nextWeek, nextMonth] = await Promise.all([
+      ThanhToan.aggregate([
+        { $match: { ngayThanhToan: { $gte: startOfMonth, $lte: endOfMonth } } },
+        { $group: { _id: null, total: { $sum: '$soTien' } } },
+      ]),
+      ThanhToan.aggregate([
+        { $match: { ngayThanhToan: { $gte: startOfYear, $lte: endOfYear } } },
+        { $group: { _id: null, total: { $sum: '$soTien' } } },
+      ]),
+      Promise.resolve((() => { const d = new Date(); d.setDate(d.getDate() + 7); return d; })()),
+      Promise.resolve((() => { const d = new Date(); d.setDate(d.getDate() + 30); return d; })()),
     ]);
 
-    // Get pending invoices (due in next 7 days)
-    const nextWeek = new Date();
-    nextWeek.setDate(nextWeek.getDate() + 7);
-    
-    const hoaDonSapDenHan = await HoaDon.countDocuments({
-      hanThanhToan: { $lte: nextWeek },
-      trangThai: { $in: ['chuaThanhToan', 'daThanhToanMotPhan'] }
-    });
-
-    // Get pending issues
-    const suCoCanXuLy = await SuCo.countDocuments({
-      trangThai: { $in: ['moi', 'dangXuLy'] }
-    });
-
-    // Get contracts expiring in next 30 days
-    const nextMonth = new Date();
-    nextMonth.setDate(nextMonth.getDate() + 30);
-    
-    const hopDongSapHetHan = await HopDong.countDocuments({
-      ngayKetThuc: { $lte: nextMonth },
-      trangThai: 'hoatDong'
-    });
+    const [hoaDonSapDenHan, suCoCanXuLy, hopDongSapHetHan] = await Promise.all([
+      HoaDon.countDocuments({
+        hanThanhToan: { $lte: nextWeek },
+        trangThai: { $in: ['chuaThanhToan', 'daThanhToanMotPhan'] },
+      }),
+      SuCo.countDocuments({ trangThai: { $in: ['moi', 'dangXuLy'] } }),
+      HopDong.countDocuments({
+        ngayKetThuc: { $lte: nextMonth },
+        trangThai: 'hoatDong',
+      }),
+    ]);
 
     const stats = {
       tongSoPhong: totalPhong,
@@ -107,9 +83,12 @@ export async function GET(request: NextRequest) {
       hopDongSapHetHan,
     };
 
+    await cacheSet(CACHE_KEY, stats, CACHE_TTL);
+
     return NextResponse.json({
       success: true,
       data: stats,
+      source: 'db',
     });
 
   } catch (error) {

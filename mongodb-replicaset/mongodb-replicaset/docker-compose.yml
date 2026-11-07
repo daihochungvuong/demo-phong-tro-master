@@ -1,0 +1,50 @@
+version: '3.8'
+
+services:
+  mongo-primary:
+    image: mongo:latest
+    container_name: mongo-primary
+    command: mongod --bind_ip_all --replSet rs0 --port 27017 --auth --keyFile /data/keyfile/mongodb-keyfile
+    ports:
+      - "27017:27017"
+    volumes:
+      - ./data/primary:/data/db
+      - ./keyfile:/data/keyfile
+    networks:
+      - mongo-network
+    restart: always
+
+  mongo-secondary-1:
+    image: mongo:latest
+    container_name: mongo-secondary-1
+    command: mongod --bind_ip_all --replSet rs0 --port 27017 --auth --keyFile /data/keyfile/mongodb-keyfile
+    ports:
+      - "27018:27017"
+    volumes:
+      - ./data/secondary1:/data/db
+      - ./keyfile:/data/keyfile
+    networks:
+      - mongo-network
+    restart: always
+    depends_on:
+      - mongo-primary
+
+  mongo-secondary-2:
+    image: mongo:latest
+    container_name: mongo-secondary-2
+    command: mongod --bind_ip_all --replSet rs0 --port 27017 --auth --keyFile /data/keyfile/mongodb-keyfile
+    ports:
+      - "27019:27017"
+    volumes:
+      - ./data/secondary2:/data/db
+      - ./keyfile:/data/keyfile
+    networks:
+      - mongo-network
+    restart: always
+    depends_on:
+      - mongo-primary
+
+networks:
+  mongo-network:
+    driver: bridge
+

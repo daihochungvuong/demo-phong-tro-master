@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --turbopack",
+    "dev": "next dev",
     "build": "next build --turbopack",
     "start": "next start",
     "lint": "eslint",
@@ -44,6 +44,7 @@
     "embla-carousel-react": "^8.6.0",
     "file-saver": "^2.0.5",
     "html2canvas": "^1.4.1",
+    "ioredis": "^6.0.0",
     "jsonwebtoken": "^9.0.2",
     "jspdf": "^3.0.3",
     "lucide-react": "^0.544.0",

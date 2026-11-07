@@ -47,3 +47,5 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+mongodb-replicaset/mongodb-replicaset/data/
+mongodb-replicaset/mongodb-replicaset/keyfile/
