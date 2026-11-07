@@ -19,7 +19,7 @@ const NguoiDungSchema = new mongoose.Schema({
 }, { collection: 'nguoidungs' });
 
 async function run() {
-  const uri = "mongodb://admintison:tisonpaint@mongo-primary:27017,mongo-secondary-1:27017,mongo-secondary-2:27017/QuanLyPhongTro?replicaSet=rs0&authSource=admin";
+  const uri = "mongodb+srv://tuanphongkhoi_db_user:cjLjcPlcJag1bnmQ@cluster0.6s29ont.mongodb.net/QuanLyPhongTro?retryWrites=true&w=majority";
   
   try {
     await mongoose.connect(uri);
